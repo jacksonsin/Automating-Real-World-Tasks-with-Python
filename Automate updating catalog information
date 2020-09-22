@@ -1,5 +1,20 @@
 +++ changeimage.py +++
 #!/usr/bin/env python3
+import os, sys
+from PIL import Image
+
+user = os.getenv('USER')
+image_directory = '/home/{}/supplier-data/images/'.format(user)
+for image_name in os.listdir(image_directory):
+    if not image_name.startswith('.') and 'tiff' in image_name:
+        image_path = image_directory + image_name
+        path = os.path.splitext(image_path)[0]
+        im = Image.open(image_path)
+        new_path = '{}.jpeg'.format(path)
+        im.convert('RGB').resize((600, 400)).save(new_path,"JPEG")
+ 
++++ supplier_image_upload.py +++
+#!/usr/bin/env python3
 import requests, os
 url = "http://localhost/upload/"
 USER = os.getenv('USER')
@@ -10,23 +25,8 @@ for image_name in files:
         image_path = image_directory + image_name
         with open(image_path, 'rb') as opened:
             r = requests.post(url, files={'file': opened})
- 
-+++ supplier_image_upload.py +++
-
-#!/usr/bin/env python 3
-import requests, os
-url = "http://localhost/upload/"
-USER = os.getenv('USER')
-image_directory = '/home/{}/supplier-data/images/'.format(USER)
-files = os.listdir(image_directory
-for image_name in files:
-    if not image_name.startswith('.') and 'jpeg' in image_name:
-        image_path = image_directory + image_name
-        with open(image_path, 'rb') as opened:
-            r = requests.post(url, files={'file': opened})
 
 +++ run.py +++
-
 #!/usr/bin/env python3
 import os, requests, json
 def catalog_data(url,description_dir):
@@ -75,7 +75,6 @@ def generate_report(file, title, add_info):
     report.build([report_title, empty_line, report_info, empty_line])
 
 +++ report_email.py +++
-
 #!/usr/bin/env python3
 import datetime
 import os
@@ -114,48 +113,53 @@ if __name__ == "__main__":
     generate_report('/tmp/processed.pdf', title, pdf_body('pdf',description_directory))
     email_subject = 'Upload Completed - Online Fruit Store'
     email_body = 'All fruits are uploaded to our website successfully. A detailed list is attached to this email.'
-    msg = generate_email("automation@example", "student-02-da6ef6fecffa@example.com".format(user), email_subject, email_body,
-"/tmp/processed.pdf")
-    send_email(msg)
+    msg = generate_email("automation@example", "student-02-da6ef6fecffa@example.com".format(user), email_subject, email_body,"/tmp/processed.pdf")
+    #send_email(msg)
+    sendmail
 
 +++ emails.py +++
 #!/usr/bin/env python3
-
-import email
-import mimetypes
-import smtplib
+import datetime
 import os
 
-def generate_email(sender, recipient, subject, body, attachment_path):
-    """Creates an email with an attachment."""
-    # Basic Email formatting
-    message = email.message.EmailMessage()
-    message["From"] = sender
-    message["To"] = recipient
-    message["Subject"] = subject
-    message.set_content(body)
-    
-    # Making attachment_path optional, if the attachment variable is empty string, no emails
-    if not attachment_path == "":
-        # Process the attachment and add it to the email
-        attachment_filename = os.path.basename(attachment_path)
-        mime_type, _ = mimetypes.guess_type(attachment_path)
-        mime_type, mime_subtype = mime_type.split('/', 1)
-        
-        with open(attachment_path, 'rb') as ap:
-            message.add_atachment(ap.read(), maintype=mime_type, subtype=mime_subtype, filename=attachment_filename)
-                                  
-    return message
-    
-def send_email(message):
-    """Sends the message to the configured SMTP server."""
-    mail_server = smtplib.SMTP('localhost')
-    mail_sever.send_message(message)
-    mail_sever.quit()
+from run import catalog_data
+from reports import generate_report
+from emails import generate_email, send_email
+
+def pdf_body(input_for,desc_dir):
+    """Generating a summary with two lists, which gives the output name and weight"""
+    res = []
+    wt = []
+    for item in os.listdir(desc_dir):
+        filename=os.path.join(desc_dir,item)
+        with open(filename) as f:
+            line = f.readlines()
+            weight = line[1].strip('\n')
+            name = line[0].strip('\n')
+            print(name,weight)
+            res.append('name: ' +name)
+            wt.append('weight: ' +weight)
+            print(res)
+            print(wt)
+        new_obj = ""
+        for i in range(len(res)):
+            if res[i] and input_for == 'pdf':
+              new_obj += res[i] + '<br />' + wt[i] + '<br />' + '<br />'
+    return new_obj
+
+if __name__ == "__main__":
+    user = os.getenv('USER')
+    description_directory = '/home/{}/supplier-data/descriptions/'.format(user)
+    current_date = datetime.date.today().strftime("%B %d, %Y")
+    title = 'Processed Update on ' + str(current_date)
+    generate_report('/tmp/processed.pdf', title, pdf_body('pdf', description_directory))
+    email_subject = 'Upload Completed - Online Fruit Store'
+    email_body = 'All fruits are uploaded to our website successfully. A detailed list is attached to$
+    msg = generate_email("automation@example.com", "student-00-a5fcfac9b30f@example.com".format(user)$
+    send_email(msg)
 
 +++ health_check.py +++
 #!/usr/bin/env python3
-
 import socket
 import shutil
 import psutil
@@ -171,18 +175,18 @@ def check_disk_usage(disk):
     return free > 20
 
 def check_memory_usage(d):
-    mu = psutil.virtual_meory().availble
+    mu = psutil.virtual_memory().available
     total = mu / (1024.0 ** 2)
     return total > 500
-    
-def check_cpu_usuage():
-    usuage = psutil.cpu_percent(1)
+
+def check_cpu_usage():
+    usage = psutil.cpu_percent(1)
     return usage < 80
 
 def send_email(subject):
-    email = emails.generate_email("automation@example", " @eample.com", subject, "Please check your system and resolve the issue as soon as possible"
+    email = emails.generate_email("automation@example.com", "student-00-a5fcfac9b30f@example.com", subject, "Please check your system and resolve the issue as soon as possible", "")
     emails.send_email(email)
-    
+
 if not check_cpu_usage():
     subject="Error - CPU usage is over 80%"
     print(subject)
@@ -192,14 +196,16 @@ if not check_memory_usage('/'):
     subject="Error - Available memory is less than 500MB"
     print(subject)
     send_email(subject)
-    
+
 if not check_disk_usage('/'):
     subject="Error - Available disk space is less than 20%"
     print(subject)
     send_email(subject)
-    
+
 if not check_localhost():
     subject="Error - localhost cannot be resolved to 127.0.0.1"
     print(subject)
     send_email(subject)
+
+
  
